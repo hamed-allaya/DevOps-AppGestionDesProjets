@@ -5,17 +5,18 @@ pipeline {
         maven 'M2_HOME'
     }
     environment {
-        IMAGE_BACK  = "hamed2027/app-gestion-backend"
-        IMAGE_FRONT = "hamed2027/app-gestion-frontend"
-        MAVEN_OPTS  = "-XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xms256m -Xmx512m"
+        MAVEN_OPTS   = "-XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xms256m -Xmx512m"
+        NODE_OPTIONS = "--max-old-space-size=1536"
     }
     stages {
-        stage('Checkout') {
-            steps { checkout scm }
+        stage('1. Checkout') {
+            steps {
+                checkout scm
+            }
         }
 
         // ==================== PARTIE BACKEND ====================
-        stage('Backend - Build & Test') {
+        stage('2. Backend - Build & Test') {
             steps {
                 dir('backend') {
                     sh 'mvn clean package'
@@ -23,47 +24,34 @@ pipeline {
                 archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
             }
         }
-        stage('Backend - Docker Build & Push') {
-            steps {
-                dir('backend') {
-                    sh "docker build -t ${IMAGE_BACK}:${BUILD_NUMBER} -t ${IMAGE_BACK}:latest ."
-                }
-                withCredentials([usernamePassword(credentialsId: 'hamed2027', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                    sh "docker push ${IMAGE_BACK}:${BUILD_NUMBER}"
-                    sh "docker push ${IMAGE_BACK}:latest"
-                }
-            }
-        }
-        stage('Backend - Deploy Conteneur') {
+        stage('3. Backend - Deploy') {
             steps {
                 sh """
-                    docker stop app-backend || true
-                    docker rm app-backend || true
-                    docker run -d --name app-backend --network host -e SERVER_PORT=8081 ${IMAGE_BACK}:latest
+                    pkill -f "app-backend.jar" || true
+                    cp backend/target/*.jar /opt/app-backend/app-backend.jar
+                    BUILD_ID=dontKillMe nohup java -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -jar /opt/app-backend/app-backend.jar --server.port=8081 > /opt/app-backend/app.log 2>&1 &
                 """
             }
         }
 
         // ==================== PARTIE FRONTEND ====================
-        stage('Frontend - Docker Build & Push') {
+        stage('4. Frontend - Build') {
             steps {
                 dir('frontend') {
-                    sh "docker build -t ${IMAGE_FRONT}:${BUILD_NUMBER} -t ${IMAGE_FRONT}:latest ."
-                }
-                withCredentials([usernamePassword(credentialsId: 'hamed2027', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                    sh "docker push ${IMAGE_FRONT}:${BUILD_NUMBER}"
-                    sh "docker push ${IMAGE_FRONT}:latest"
+                    sh 'npm install --legacy-peer-deps'
+                    sh 'npm run build'
                 }
             }
         }
-        stage('Frontend - Deploy Conteneur') {
+        stage('5. Frontend - Deploy') {
             steps {
                 sh """
-                    docker stop app-frontend || true
-                    docker rm app-frontend || true
-                    docker run -d --name app-frontend -p 80:80 ${IMAGE_FRONT}:latest
+                    rm -rf /var/www/app-frontend/*
+                    if [ -d "frontend/dist/browser" ]; then
+                        cp -r frontend/dist/browser/* /var/www/app-frontend/
+                    else
+                        cp -r frontend/dist/*/* /var/www/app-frontend/ 2>/dev/null || cp -r frontend/dist/* /var/www/app-frontend/
+                    fi
                 """
             }
         }
