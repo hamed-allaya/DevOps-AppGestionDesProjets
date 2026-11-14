@@ -6,7 +6,7 @@ pipeline {
     environment {
         JAVA_HOME    = "/usr/lib/jvm/java-17-openjdk-amd64"
         PATH         = "/usr/lib/jvm/java-17-openjdk-amd64/bin:${env.PATH}"
-        MAVEN_OPTS   = "-Xms256m -Xmx512m"
+        MAVEN_OPTS   = "-Xint -Xms256m -Xmx512m"
         NODE_OPTIONS = "--max-old-space-size=1536"
     }
     stages {
