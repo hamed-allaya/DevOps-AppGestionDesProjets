@@ -1,11 +1,12 @@
 pipeline {
     agent any
     tools {
-        jdk 'JAVA_HOME'
         maven 'M2_HOME'
     }
     environment {
-        MAVEN_OPTS   = "-XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xms256m -Xmx512m"
+        JAVA_HOME    = "/usr/lib/jvm/java-17-openjdk-amd64"
+        PATH         = "/usr/lib/jvm/java-17-openjdk-amd64/bin:${env.PATH}"
+        MAVEN_OPTS   = "-Xms256m -Xmx512m"
         NODE_OPTIONS = "--max-old-space-size=1536"
     }
     stages {
@@ -19,7 +20,7 @@ pipeline {
         stage('2. Backend - Build & Test') {
             steps {
                 dir('backend') {
-                    sh 'mvn clean package'
+                    sh 'java -version && mvn clean package'
                 }
                 archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
             }
@@ -29,7 +30,7 @@ pipeline {
                 sh """
                     pkill -f "app-backend.jar" || true
                     cp backend/target/*.jar /opt/app-backend/app-backend.jar
-                    BUILD_ID=dontKillMe nohup java -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -jar /opt/app-backend/app-backend.jar --server.port=8081 > /opt/app-backend/app.log 2>&1 &
+                    BUILD_ID=dontKillMe nohup /usr/lib/jvm/java-17-openjdk-amd64/bin/java -jar /opt/app-backend/app-backend.jar --server.port=8081 > /opt/app-backend/app.log 2>&1 &
                 """
             }
         }
