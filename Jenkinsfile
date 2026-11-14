@@ -20,7 +20,7 @@ pipeline {
         stage('2. Backend - Build & Test') {
             steps {
                 dir('backend') {
-                    sh 'java -version && mvn clean package -T 1 -DforkCount=0'
+                    sh 'mvn clean package -T 1 -DforkCount=0'
                 }
                 archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
             }
@@ -30,7 +30,7 @@ pipeline {
                 sh """
                     pkill -f "app-backend.jar" || true
                     cp backend/target/*.jar /opt/app-backend/app-backend.jar
-                    BUILD_ID=dontKillMe nohup /usr/lib/jvm/java-17-openjdk-amd64/bin/java -jar /opt/app-backend/app-backend.jar --server.port=8081 > /opt/app-backend/app.log 2>&1 &
+                    BUILD_ID=dontKillMe nohup /usr/lib/jvm/java-17-openjdk-amd64/bin/java -XX:+UseSerialGC -XX:UseAVX=0 -jar /opt/app-backend/app-backend.jar --server.port=8081 > /opt/app-backend/app.log 2>&1 &
                 """
             }
         }
@@ -48,11 +48,7 @@ pipeline {
             steps {
                 sh """
                     rm -rf /var/www/app-frontend/*
-                    if [ -d "frontend/dist/browser" ]; then
-                        cp -r frontend/dist/browser/* /var/www/app-frontend/
-                    else
-                        cp -r frontend/dist/*/* /var/www/app-frontend/ 2>/dev/null || cp -r frontend/dist/* /var/www/app-frontend/
-                    fi
+                    cp -r frontend/dist/frontend/browser/* /var/www/app-frontend/
                 """
             }
         }
