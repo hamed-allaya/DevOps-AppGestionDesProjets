@@ -6,7 +6,7 @@ pipeline {
     environment {
         JAVA_HOME    = "/usr/lib/jvm/java-17-openjdk-amd64"
         PATH         = "/usr/lib/jvm/java-17-openjdk-amd64/bin:${env.PATH}"
-        MAVEN_OPTS   = "-Xint -Xms256m -Xmx512m"
+        MAVEN_OPTS   = "-XX:+UseSerialGC -XX:UseAVX=0 -Xms256m -Xmx512m"
         NODE_OPTIONS = "--max-old-space-size=1536"
     }
     stages {
@@ -20,7 +20,7 @@ pipeline {
         stage('2. Backend - Build & Test') {
             steps {
                 dir('backend') {
-                    sh 'java -version && mvn clean package'
+                    sh 'java -version && mvn clean package -T 1 -DforkCount=0'
                 }
                 archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
             }
