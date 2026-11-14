@@ -5,61 +5,64 @@ pipeline {
         maven 'M2_HOME'
     }
     environment {
-        DOCKER_IMAGE = "hamed2027/app-gestion-backend"
+        IMAGE_BACK  = "hamed2027/app-gestion-backend"
+        IMAGE_FRONT = "hamed2027/app-gestion-frontend"
     }
     stages {
         stage('Checkout') {
             steps { checkout scm }
         }
-        stage('Build Backend') {
+
+        // ==================== PARTIE BACKEND ====================
+        stage('Backend - Build & Test') {
             steps {
                 dir('backend') {
-                    sh 'mvn clean package -DskipTests'
+                    sh 'mvn clean package'
                 }
-            }
-        }
-        stage('Test Backend') {
-            steps {
-                dir('backend') {
-                    sh 'mvn test'
-                }
-            }
-        }
-        stage('Build Frontend') {
-            steps {
-                dir('frontend') {
-                    sh 'npm install'
-                    sh 'npm run build'
-                }
-            }
-        }
-        stage('Archive') {
-            steps {
                 archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
             }
         }
-        stage('Docker Build') {
+        stage('Backend - Docker Build & Push') {
             steps {
                 dir('backend') {
-                    sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} -t ${DOCKER_IMAGE}:latest ."
+                    sh "docker build -t ${IMAGE_BACK}:${BUILD_NUMBER} -t ${IMAGE_BACK}:latest ."
                 }
-            }
-        }
-        stage('Docker Push') {
-            steps {
                 withCredentials([usernamePassword(credentialsId: 'hamed2027', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                    sh "docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}"
-                    sh "docker push ${DOCKER_IMAGE}:latest"
+                    sh "docker push ${IMAGE_BACK}:${BUILD_NUMBER}"
+                    sh "docker push ${IMAGE_BACK}:latest"
                 }
             }
         }
-        stage('Deploy Conteneur') {
+        stage('Backend - Deploy Conteneur') {
             steps {
                 sh """
                     docker stop app-backend || true
                     docker rm app-backend || true
-                    docker run -d --name app-backend --network host -e SERVER_PORT=8081 ${DOCKER_IMAGE}:latest
+                    docker run -d --name app-backend --network host -e SERVER_PORT=8081 ${IMAGE_BACK}:latest
+                """
+            }
+        }
+
+        // ==================== PARTIE FRONTEND ====================
+        stage('Frontend - Docker Build & Push') {
+            steps {
+                dir('frontend') {
+                    sh "docker build -t ${IMAGE_FRONT}:${BUILD_NUMBER} -t ${IMAGE_FRONT}:latest ."
+                }
+                withCredentials([usernamePassword(credentialsId: 'hamed2027', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    sh "docker push ${IMAGE_FRONT}:${BUILD_NUMBER}"
+                    sh "docker push ${IMAGE_FRONT}:latest"
+                }
+            }
+        }
+        stage('Frontend - Deploy Conteneur') {
+            steps {
+                sh """
+                    docker stop app-frontend || true
+                    docker rm app-frontend || true
+                    docker run -d --name app-frontend -p 80:80 ${IMAGE_FRONT}:latest
                 """
             }
         }
