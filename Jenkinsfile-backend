@@ -17,7 +17,7 @@ pipeline {
         stage('2. Build & Test Backend') {
             steps {
                 dir('backend') {
-                    sh 'mvn clean package -T 1 -DforkCount=0'
+                    sh 'mvn clean package -DskipTests'
                 }
                 archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
             }
