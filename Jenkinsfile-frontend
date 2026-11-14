@@ -1,0 +1,29 @@
+pipeline {
+    agent any
+    environment {
+        NODE_OPTIONS = "--max-old-space-size=1536"
+    }
+    stages {
+        stage('1. Checkout Frontend') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('2. Build Frontend') {
+            steps {
+                dir('frontend') {
+                    sh 'npm install --legacy-peer-deps'
+                    sh 'npm run build'
+                }
+            }
+        }
+        stage('3. Deploy Frontend') {
+            steps {
+                sh """
+                    rm -rf /var/www/app-frontend/*
+                    cp -r frontend/dist/frontend/browser/* /var/www/app-frontend/
+                """
+            }
+        }
+    }
+}
