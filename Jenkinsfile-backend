@@ -1,12 +1,9 @@
 pipeline {
     agent any
-    tools {
-        maven 'M2_HOME'
-    }
     environment {
         JAVA_HOME  = "/usr/lib/jvm/java-17-openjdk-amd64"
-        PATH       = "/usr/lib/jvm/java-17-openjdk-amd64/bin:${env.PATH}"
-        MAVEN_OPTS = "-Xint -XX:+UseParallelGC -XX:UseAVX=0 -Xms512m -Xmx1024m"
+        PATH       = "/usr/lib/jvm/java-17-openjdk-amd64/bin:/usr/bin:${env.PATH}"
+        MAVEN_OPTS = "-Xint -XX:+UseSerialGC -XX:UseAVX=0 -Xms512m -Xmx1024m"
     }
     stages {
         stage('1. Checkout Backend') {
@@ -17,7 +14,7 @@ pipeline {
         stage('2. Build & Test Backend') {
             steps {
                 dir('backend') {
-                    sh 'mvn clean package -DskipTests'
+                    sh '/usr/bin/mvn clean package -DskipTests'
                 }
                 archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
             }
