@@ -7,7 +7,7 @@ pipeline {
     environment {
         IMAGE_BACK  = "hamed2027/app-gestion-backend"
         IMAGE_FRONT = "hamed2027/app-gestion-frontend"
-        MAVEN_OPTS  = "-XX:+UseSerialGC -Xmx512m"
+        MAVEN_OPTS  = "-XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xms256m -Xmx512m"
     }
     stages {
         stage('Checkout') {
